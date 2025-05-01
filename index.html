@@ -65,10 +65,10 @@
   <div class="container">
     <h2>e Panchayat Siddipet - Attendance</h2>
     <input type="text" id="employeeId" placeholder="Enter your ID or Name" />
-    <video id="video" width="100%" autoplay playsinline style="display:none;"></video>
     <canvas id="canvas" style="display:none;"></canvas>
-    <button id="checkInBtn" disabled onclick="submitAttendance('Check In')">Check In</button>
-    <button id="checkOutBtn" disabled onclick="submitAttendance('Check Out')">Check Out</button>
+    <img id="snapshot" style="width:100%; display:none;" />
+    <button id="checkInBtn" onclick="submitAttendance('Check In')">Check In</button>
+    <button id="checkOutBtn" onclick="submitAttendance('Check Out')">Check Out</button>
     <div class="message" id="message"></div>
   </div>
 
@@ -92,23 +92,32 @@
   <script>
     let allData = [];
 
-    const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
+    const snapshot = document.getElementById('snapshot');
     const checkInBtn = document.getElementById('checkInBtn');
     const checkOutBtn = document.getElementById('checkOutBtn');
 
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(stream => {
-        video.srcObject = stream;
-        video.style.display = 'block';
-        video.onloadedmetadata = () => {
-          checkInBtn.disabled = false;
-          checkOutBtn.disabled = false;
-        };
-      })
-      .catch(err => {
-        console.error('Camera access denied:', err);
-      });
+    if ('mediaDevices' in navigator && 'getUserMedia' in navigator.mediaDevices) {
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => {
+          const video = document.createElement('video');
+          video.srcObject = stream;
+          video.play();
+
+          setTimeout(() => {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0);
+            snapshot.src = canvas.toDataURL('image/jpeg');
+            snapshot.style.display = 'block';
+            stream.getTracks().forEach(track => track.stop());
+          }, 2000);
+        })
+        .catch(err => {
+          console.error('Camera access denied:', err);
+        });
+    }
 
     function submitAttendance(action) {
       const id = document.getElementById('employeeId').value.trim();
@@ -123,16 +132,6 @@
       const timestamp = now.toLocaleString();
 
       const context = canvas.getContext('2d');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-
-      if (canvas.width === 0 || canvas.height === 0) {
-        message.textContent = 'Error capturing photo. Please try again.';
-        message.style.color = 'red';
-        return;
-      }
-
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
       context.fillStyle = 'white';
       context.font = '20px Arial';
       context.fillText(timestamp, 10, canvas.height - 10);
