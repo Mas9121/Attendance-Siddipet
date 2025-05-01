@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Company Attendance</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .container {
+      background: white;
+      padding: 2rem;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      width: 90%;
+      max-width: 400px;
+      margin-top: 2rem;
+    }
+    input, button, select {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      font-size: 16px;
+    }
+    button {
+      background-color: #28a745;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #218838;
+    }
+    .message {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+    #adminSection {
+      display: none;
+      margin-top: 2rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    table, th, td {
+      border: 1px solid #ccc;
+    }
+    th, td {
+      padding: 8px;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Employee Attendance</h2>
+    <input type="text" id="employeeId" placeholder="Enter your ID or Name" />
+    <video id="video" width="100%" autoplay playsinline style="display:none;"></video>
+    <canvas id="canvas" style="display:none;"></canvas>
+    <button onclick="submitAttendance('Check In')">Check In</button>
+    <button onclick="submitAttendance('Check Out')">Check Out</button>
+    <div class="message" id="message"></div>
+  </div>
+
+  <div class="container" id="adminLogin">
+    <h3>Admin Login</h3>
+    <input type="password" id="adminPassword" placeholder="Enter admin password" />
+    <button onclick="showAdminPanel()">Login</button>
+  </div>
+
+  <div class="container" id="adminSection">
+    <h3>Attendance Records</h3>
+    <input type="text" id="filterId" placeholder="Filter by Employee ID" onkeyup="applyFilter()" />
+    <select id="filterAction" onchange="applyFilter()">
+      <option value="">All Actions</option>
+      <option value="Check In">Check In</option>
+      <option value="Check Out">Check Out</option>
+    </select>
+    <div id="records">Loading...</div>
+  </div>
+
+  <script>
+    let allData = [];
+
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => {
+        const video = document.getElementById('video');
+        video.srcObject = stream;
+        video.style.display = 'block';
+      })
+      .catch(err => {
+        console.error('Camera access denied:', err);
+      });
+
+    function submitAttendance(action) {
+      const id = document.getElementById('employeeId').value.trim();
+      const message = document.getElementById('message');
+      if (!id) {
+        message.textContent = 'Please enter your ID or name.';
+        message.style.color = 'red';
+        return;
+      }
+
+      const now = new Date();
+      const timestamp = now.toLocaleString();
+
+      // Capture photo with timestamp overlay
+      const canvas = document.getElementById('canvas');
+      const video = document.getElementById('video');
+      const context = canvas.getContext('2d');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // Add timestamp overlay on image
+      context.fillStyle = 'white';
+      context.font = '20px Arial';
+      context.fillText(timestamp, 10, canvas.height - 10);
+
+      const photoData = canvas.toDataURL('image/jpeg');
+
+      fetch('https://script.google.com/macros/s/AKfycbz9uY9sJDvsEsf9ENkqiS22insMPr3xBblxnqs1XEtVFb-_iUKsoAn87bYi2O6fZNDr/exec', {
+        method: 'POST',
+        body: JSON.stringify({
+          employeeId: id,
+          action: action,
+          timestamp: timestamp,
+          photo: photoData
+        }),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      .then(response => response.text())
+      .then(result => {
+        message.textContent = `${action} recorded for ${id} at ${timestamp}`;
+        message.style.color = 'green';
+        document.getElementById('employeeId').value = '';
+      })
+      .catch(error => {
+        message.textContent = 'Error recording attendance.';
+        message.style.color = 'red';
+      });
+    }
+
+    function showAdminPanel() {
+      const pass = document.getElementById('adminPassword').value;
+      if (pass !== 'admin123') {
+        alert('Incorrect password');
+        return;
+      }
+      document.getElementById('adminLogin').style.display = 'none';
+      document.getElementById('adminSection').style.display = 'block';
+      fetchSheetData();
+    }
+
+    function fetchSheetData() {
+      const sheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQU2dzYhcuJKsE9NP09NOMkSPFZhD3edwS13jJwotM_3dQRreI9f-auK9OQpuiUmhFg6_OO0uJYKNgm/pub?output=csv';
+      fetch(sheetUrl)
+        .then(response => response.text())
+        .then(data => {
+          const rows = data.split('\n').map(row => row.split(','));
+          allData = rows.slice(1); // Skip header
+          renderTable(allData);
+        })
+        .catch(() => {
+          document.getElementById('records').innerHTML = 'Failed to load data';
+        });
+    }
+
+    function renderTable(data) {
+      let html = '<table><tr><th>Timestamp</th><th>Employee ID</th><th>Action</th><th>Photo</th></tr>';
+      data.forEach(row => {
+        html += `<tr><td>${row[0]}</td><td>${row[1]}</td><td>${row[2]}</td><td><img src="${row[3]}" width="60" /></td></tr>`;
+      });
+      html += '</table>';
+      document.getElementById('records').innerHTML = html;
+    }
+
+    function applyFilter() {
+      const idFilter = document.getElementById('filterId').value.toLowerCase();
+      const actionFilter = document.getElementById('filterAction').value;
+      const filtered = allData.filter(row => {
+        const matchesId = row[1].toLowerCase().includes(idFilter);
+        const matchesAction = !actionFilter || row[2] === actionFilter;
+        return matchesId && matchesAction;
+      });
+      renderTable(filtered);
+    }
+  </script>
+</body>
+</html>
