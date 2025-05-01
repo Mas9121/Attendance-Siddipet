@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Company Attendance</title>
+  <title>e Panchayat Siddipet - Attendance</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -63,7 +63,7 @@
 </head>
 <body>
   <div class="container">
-    <h2>Employee Attendance</h2>
+    <h2>e Panchayat Siddipet - Attendance</h2>
     <input type="text" id="employeeId" placeholder="Enter your ID or Name" />
     <video id="video" width="100%" autoplay playsinline style="display:none;"></video>
     <canvas id="canvas" style="display:none;"></canvas>
@@ -114,7 +114,6 @@
       const now = new Date();
       const timestamp = now.toLocaleString();
 
-      // Capture photo with timestamp overlay
       const canvas = document.getElementById('canvas');
       const video = document.getElementById('video');
       const context = canvas.getContext('2d');
@@ -122,7 +121,6 @@
       canvas.height = video.videoHeight;
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      // Add timestamp overlay on image
       context.fillStyle = 'white';
       context.font = '20px Arial';
       context.fillText(timestamp, 10, canvas.height - 10);
@@ -170,7 +168,7 @@
         .then(response => response.text())
         .then(data => {
           const rows = data.split('\n').map(row => row.split(','));
-          allData = rows.slice(1); // Skip header
+          allData = rows.slice(1);
           renderTable(allData);
         })
         .catch(() => {
