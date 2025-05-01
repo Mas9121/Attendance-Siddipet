@@ -67,8 +67,8 @@
     <input type="text" id="employeeId" placeholder="Enter your ID or Name" />
     <video id="video" width="100%" autoplay playsinline style="display:none;"></video>
     <canvas id="canvas" style="display:none;"></canvas>
-    <button onclick="submitAttendance('Check In')">Check In</button>
-    <button onclick="submitAttendance('Check Out')">Check Out</button>
+    <button id="checkInBtn" disabled onclick="submitAttendance('Check In')">Check In</button>
+    <button id="checkOutBtn" disabled onclick="submitAttendance('Check Out')">Check Out</button>
     <div class="message" id="message"></div>
   </div>
 
@@ -92,11 +92,19 @@
   <script>
     let allData = [];
 
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const checkInBtn = document.getElementById('checkInBtn');
+    const checkOutBtn = document.getElementById('checkOutBtn');
+
     navigator.mediaDevices.getUserMedia({ video: true })
       .then(stream => {
-        const video = document.getElementById('video');
         video.srcObject = stream;
         video.style.display = 'block';
+        video.onloadedmetadata = () => {
+          checkInBtn.disabled = false;
+          checkOutBtn.disabled = false;
+        };
       })
       .catch(err => {
         console.error('Camera access denied:', err);
@@ -114,13 +122,17 @@
       const now = new Date();
       const timestamp = now.toLocaleString();
 
-      const canvas = document.getElementById('canvas');
-      const video = document.getElementById('video');
       const context = canvas.getContext('2d');
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
+      if (canvas.width === 0 || canvas.height === 0) {
+        message.textContent = 'Error capturing photo. Please try again.';
+        message.style.color = 'red';
+        return;
+      }
+
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
       context.fillStyle = 'white';
       context.font = '20px Arial';
       context.fillText(timestamp, 10, canvas.height - 10);
@@ -146,6 +158,7 @@
         document.getElementById('employeeId').value = '';
       })
       .catch(error => {
+        console.error('Attendance error:', error);
         message.textContent = 'Error recording attendance.';
         message.style.color = 'red';
       });
